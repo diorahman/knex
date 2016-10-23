@@ -24,12 +24,12 @@ assign(Runner.prototype, {
   // a single connection.
   run() {
     const runner = this
-    return Promise.using(this.ensureConnection(), function(connection) {
+    const sql = runner.builder.toSQL()
+    return Promise.using(this.ensureConnection(sql.method === 'select'), function(connection) {
       runner.connection = connection;
 
       runner.client.emit('start', runner.builder)
       runner.builder.emit('start', runner.builder)
-      const sql = runner.builder.toSQL();
 
       if (runner.builder._debug) {
         helpers.debugLog(sql)
@@ -80,9 +80,9 @@ assign(Runner.prototype, {
 
     const runner = this;
     const stream = new PassThrough({objectMode: true});
-    const promise = Promise.using(this.ensureConnection(), function(connection) {
+    const sql = runner.builder.toSQL();
+    const promise = Promise.using(this.ensureConnection(sql.method === 'select'), function(connection) {
       runner.connection = connection;
-      const sql = runner.builder.toSQL()
       const err = new Error('The stream may only be used with a single query statement.');
       if (isArray(sql)) {
         if (hasHandler) throw err;
@@ -180,11 +180,11 @@ assign(Runner.prototype, {
   },
 
   // Check whether there's a transaction flag, and that it has a connection.
-  ensureConnection() {
+  ensureConnection(isRead) {
     return Promise.try(() => {
       return this.connection || new Promise((resolver, rejecter) => {
         // need to return promise or null from handler to prevent warning from bluebird
-        return this.client.acquireConnection()
+        return this.client.acquireConnection(isRead)
           .then(resolver)
           .catch(Promise.TimeoutError, (error) => {
             if (this.builder) {
@@ -197,7 +197,7 @@ assign(Runner.prototype, {
       })
     }).disposer(() => {
       // need to return promise or null from handler to prevent warning from bluebird
-      return this.client.releaseConnection(this.connection)
+      return this.client.releaseConnection(this.connection, isRead)
     })
   }
 

@@ -96,10 +96,10 @@ assign(Client_PG.prototype, {
 
   // Get a raw connection, called by the `pool` whenever a new
   // connection needs to be added to the pool.
-  acquireRawConnection() {
+  acquireRawConnection(isRead) {
     const client = this;
     return new Promise(function(resolver, rejecter) {
-      const connection = new client.driver.Client(client.connectionSettings);
+      const connection = new client.driver.Client(isRead ? client.readReplicaConnectionSettings : client.connectionSettings);
       connection.connect(function(err, connection) {
         if (err) {
           return rejecter(err);
