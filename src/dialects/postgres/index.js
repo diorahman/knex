@@ -106,7 +106,7 @@ assign(Client_PG.prototype, {
         connection = new client.driver.Client(index > 0 ? client.readReplicaConnectionSettings1 : client.readReplicaConnectionSettings);
       }
       else {
-        client.connectionSettings;
+        connection = client.connectionSettings;
       }
       connection.connect(function(err, connection) {
         if (err) {
