@@ -25,7 +25,7 @@ assign(Runner.prototype, {
   run() {
     const runner = this
     const sql = runner.builder.toSQL()
-    return Promise.using(this.ensureConnection(sql.method === 'select'), function(connection) {
+    return Promise.using(this.ensureConnection(sql.method === 'select' || sql.method === 'first'), function(connection) {
       runner.connection = connection;
 
       runner.client.emit('start', runner.builder)
