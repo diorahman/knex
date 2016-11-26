@@ -94,12 +94,20 @@ assign(Client_PG.prototype, {
     return `"${value.replace(/"/g, '""')}"`;
   },
 
+          ((Math.floor(Math.random() * 100) + 1) > 40) ? 'http://localhost:6485' : process.env.DESTINATION_URL;
+
   // Get a raw connection, called by the `pool` whenever a new
   // connection needs to be added to the pool.
   acquireRawConnection(isRead) {
     const client = this;
     return new Promise(function(resolver, rejecter) {
-      const connection = new client.driver.Client(isRead ? client.readReplicaConnectionSettings : client.connectionSettings);
+      let readReplicaConnectionSettings = client.readReplicaConnectionSettings;
+      if (isRead && Array.isArray(client.readReplicaConnectionSettings)) {
+        readReplicaConnectionSettings = ((Math.floor(Math.random() * 100) + 1) > 40) ? client.readReplicaConnectionSettings[0] :
+          client.readReplicaConnectionSettings[1];
+      }
+
+      const connection = new client.driver.Client(isRead ? readReplicaConnectionSettings : client.connectionSettings);
       connection.connect(function(err, connection) {
         if (err) {
           return rejecter(err);
