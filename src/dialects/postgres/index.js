@@ -12,6 +12,8 @@ import TableCompiler from './schema/tablecompiler';
 import SchemaCompiler from './schema/compiler';
 import {makeEscape} from '../../query/string'
 
+let currentReadReplicaIndex = 0;
+
 function Client_PG(config) {
   Client.apply(this, arguments)
   if (config.returning) {
@@ -101,8 +103,10 @@ assign(Client_PG.prototype, {
     return new Promise(function(resolver, rejecter) {
       let readReplicaConnectionSettings = client.readReplicaConnectionSettings;
       if (isRead && Array.isArray(client.readReplicaConnectionSettings)) {
-        readReplicaConnectionSettings = ((Math.floor(Math.random() * 100) + 1) > 40) ? client.readReplicaConnectionSettings[0] :
-          client.readReplicaConnectionSettings[1];
+        if (currentReadReplicaIndex >= client.readReplicaConnectionSettings.length) {
+            currentReadReplicaIndex = 0;
+        }
+        readReplicaConnectionSettings = client.readReplicaConnectionSettings[currentReadReplicaIndex++];
       }
 
       const connection = new client.driver.Client(isRead ? readReplicaConnectionSettings : client.connectionSettings);
