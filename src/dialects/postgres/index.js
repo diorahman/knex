@@ -94,8 +94,6 @@ assign(Client_PG.prototype, {
     return `"${value.replace(/"/g, '""')}"`;
   },
 
-          ((Math.floor(Math.random() * 100) + 1) > 40) ? 'http://localhost:6485' : process.env.DESTINATION_URL;
-
   // Get a raw connection, called by the `pool` whenever a new
   // connection needs to be added to the pool.
   acquireRawConnection(isRead) {
