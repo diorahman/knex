@@ -161,7 +161,7 @@ assign(Client.prototype, {
     }
   },
 
-  poolDefaults(poolConfig, isRead) {
+  poolDefaults(poolConfig, isRead, index) {
     const name = this.dialect + ':' + this.driverName + ':' + this.__cid + (isRead ? ':read' : '')
     return {
       min: 2,
@@ -173,7 +173,7 @@ assign(Client.prototype, {
         }
       },
       create: (callback) => {
-        this.acquireRawConnection(isRead)
+        this.acquireRawConnection(isRead, index)
           .tap(function(connection) {
             connection.__knexUid = uniqueId('__knexUid')
             if (poolConfig.afterCreate) {
@@ -216,8 +216,15 @@ assign(Client.prototype, {
     if (config.readReplica && config.readReplica.connection) {
       this.readReplicaConnectionSettings = cloneDeep(config.readReplica.connection)
       const readReplicaConfig = config.readReplica.config || {}
-      this.readReplicaPool = new Pool(assign(this.poolDefaults(readReplicaConfig.pool || {}, true), readReplicaConfig.pool))
+      this.readReplicaPool = new Pool(assign(this.poolDefaults(readReplicaConfig.pool || {}, true, 0), readReplicaConfig.pool))
       this.hasReadReplica = true;
+    }
+
+    if (config.readReplica1 && config.readReplica1.connection) {
+      this.readReplicaConnectionSettings1 = cloneDeep(config.readReplica1.connection)
+      const readReplicaConfig1 = config.readReplica1.config || {}
+      this.readReplicaPool1 = new Pool(assign(this.poolDefaults(readReplicaConfig1.pool || {}, true, 1), readReplicaConfig1.pool))
+      this.hasReadReplica1 = true;
     }
   },
 
@@ -231,6 +238,9 @@ assign(Client.prototype, {
       if (this.hasReadReplica && !this.readReplicaPool) {
         return rejecter(new Error('Unable to acquire a connection for read replica'))
       }
+      if (this.hasReadReplica1 && !this.readReplicaPool1) {
+        return rejecter(new Error('Unable to acquire a connection for read replica 1'))
+      }
       if (!this.pool) {
         return rejecter(new Error('Unable to acquire a connection'))
       }
@@ -242,7 +252,14 @@ assign(Client.prototype, {
           'Are you missing a .transacting(trx) call?'
         ))
       }, this.config.acquireConnectionTimeout || 60000)
-      const pool = (this.hasReadReplica && isRead) ? this.readReplicaPool : this.pool;
+      let pool;
+      if (this.hasReadReplica && isRead) {
+        pool = this.readReplicaPool;
+      } else if (this.hasReadReplica1 && isRead) {
+        pool = this.readReplicaPool1;
+      } else {
+        pool = this.pool;
+      }
       pool.acquire((err, connection) => {
         if (err) {
           return rejecter(err)
@@ -263,7 +280,14 @@ assign(Client.prototype, {
   releaseConnection(connection, isRead) {
     return new Promise((resolver) => {
       debug('releasing connection to pool: %s', connection.__knexUid)
-      const pool = (this.hasReadReplica && isRead) ? this.readReplicaPool : this.pool
+      let pool;
+      if (this.hasReadReplica && isRead) {
+        pool = this.readReplicaPool;
+      } else if (this.hasReadReplica1 && isRead) {
+        pool = this.readReplicaPool1;
+      } else {
+        pool = this.pool;
+      }
       pool.release(connection)
       resolver()
     })
