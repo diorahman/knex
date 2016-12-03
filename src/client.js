@@ -299,7 +299,24 @@ assign(Client.prototype, {
       if (!this.pool) {
         return resolver()
       }
+
       this.pool.drain(() => {
+        if (this.hasReadReplica) {
+            this.readReplicaPool.drain(() => {
+                this.readReplicaPool.destroyAllNow(() => {
+                    this.readReplicaPool = undefined
+                })
+            })
+        }
+
+        if (this.hasReadReplica1) {
+            this.readReplicaPool1.drain(() => {
+                this.readReplicaPool1.destroyAllNow(() => {
+                    this.readReplicaPool1 = undefined
+                })
+            })
+        }
+
         this.pool.destroyAllNow(() => {
           this.pool = undefined
           resolver()
